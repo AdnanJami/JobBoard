@@ -15,6 +15,47 @@ function Myjob() {
   const [appliedJobs, setAppliedJobs] = useState([]); // Track applied jobs
   const [deleteJobConfirm, setDeleteJobConfirm] = useState(false);
   const [savedJobs,setSavedJobs] = useState([]);
+    const [searchTerm, setSearchTerm] = useState('');
+  const [filterType, setFilterType] = useState('all');
+  const highlightText = (text, searchTerm) => {
+    if (!text || !searchTerm) return text;
+    const escaped = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // escape regex chars
+    const regex = new RegExp(`(${escaped})`, 'gi');
+    return text.replace(regex, '<mark style="background-color: yellow;">$1</mark>');
+  };
+
+  
+  const filteredJobs = jobs.filter((job) => {
+  const matchesSearch =
+    job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    job.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (job.description && job.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (Array.isArray(job.skills) &&
+      job.skills.some((skill) => skill.toLowerCase().includes(searchTerm.toLowerCase()))) ||
+    job.posted_by_username.toLowerCase().includes(searchTerm.toLowerCase());
+
+  const isSaved = savedJobs.includes(job.id);
+  const isApplied = appliedJobs.includes(job.id);
+
+ if (filterType === "saved" && !isSaved) return false;
+if (filterType === "unsaved" && isSaved) return false;
+if (filterType === "applied" && !isApplied) return false;
+if (filterType === "unapplied" && isApplied) return false;
+  return matchesSearch;
+});
+
+
+    const [sortBy, setSortBy] = useState("recent");
+
+
+  const fetchJobs = async (sortBy = "recent") => {
+    try {
+      const response = await api.get(`/api/v1/jobs/?user_only=true&sort_by=${sortBy}`);
+      setJobs(response.data);
+    } catch (error) {
+      console.error("Error fetching jobs:", error);
+    }
+  };
   // Fetch jobs from API
 const getJobs = async () => {
   setLoading(true);
@@ -90,17 +131,11 @@ const getSavedJobs = async () => {
 };
 
   // On component mount fetch jobs
-  useEffect(() => {
-    getAppliedJobs();
-  }, []);
-    useEffect(() => {
-    getSavedJobs();
-  }, []);
-
-  useEffect(() => {
-    getJobs();
-  }, []);
-
+useEffect(() => {
+  (async () => {
+    await Promise.all([getAppliedJobs(), getSavedJobs(), fetchJobs(sortBy)]);
+  })();
+}, []);
   // Open modal
   const handleShow = (job) => setSelectedJob(job);
   const handleClose = () => setSelectedJob(null);
@@ -131,17 +166,49 @@ const handleSave = async (jobId) => {
       <div className='header-section'>
         <h1>Your Board</h1>
         <p>Welcome to your Board page!</p>
+         {/* 🔍 Filter & Search Controls */}
+        <div className="filter-bar">
+          <input
+            type="text"
+            placeholder="Search jobs..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="filter-search"
+          />
+
+<select
+  value={filterType}
+  onChange={(e) => setFilterType(e.target.value)}
+  className="filter-select"
+>
+  <option value="all">All Jobs</option>
+  <option value="saved">Saved Jobs</option>
+  <option value="unsaved">Unsaved Jobs</option>
+  <option value="applied">Applied Jobs</option>
+  <option value="unapplied">Unapplied Jobs</option>
+</select>
+
+
+          <select onChange={(e) => fetchJobs(e.target.value)} className="sort-select" >
+            <option value="recent">Most Recent</option>
+            <option value="most_viewed">Hot</option>
+          </select>
+
+        </div>
+
       </div>
 
       {loading && <p>Loading jobs...</p>}
       {error && <p className="text-red-500">⚠️ {error}</p>}
 
-      {jobs.map((job) => (
+      {filteredJobs.map((job) => (
         <div key={job.id} className='job-card' onClick={() => handleShow(job)}>
           <div className='job-card-header'>
             <div className='job-titles'>
-              <div className="title">{job.title}</div>
-              <p className="company-name">{job.company}</p>
+              <div className="title"dangerouslySetInnerHTML={{ __html: highlightText(job.title, searchTerm) }}
+              />
+              <p className="company-name"dangerouslySetInnerHTML={{ __html: highlightText(job.company, searchTerm) }}
+              />
             </div>
           <div className='job-card-actions' >
             <button
@@ -158,12 +225,16 @@ const handleSave = async (jobId) => {
             </button>
           </div>
           </div>
-          <p className="description">{job.description}</p>
+          <p className="description"
+          dangerouslySetInnerHTML={{ __html: highlightText(job.description || '', searchTerm) }}
+          />
           <p className="location">Location: {job.location}</p>
 
           <div className="skills-section">
             {job.skills && job.skills.map((skill, i) => (
-              <div key={i} className="skill-tab">{skill}</div>
+              <div key={i} className="skill-tab"
+              dangerouslySetInnerHTML={{ __html: highlightText(skill || '', searchTerm) }}
+              />
             ))}
           </div>
         </div>

@@ -9,6 +9,8 @@ function Job_form() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+
+
 const jobData = location.state?.jobData || null;
 const isEditing = !!jobData?.id;
 const jobId = jobData?.id || null;
@@ -27,6 +29,11 @@ const jobId = jobData?.id || null;
     job_url: '',
     post_text: ''  // To hold the original job post text
   });
+
+  const [skillsText, setSkillsText] = useState(reviewData.Skills.join('\n'));
+  const [requirementsText, setRequirementsText] = useState(reviewData.Requirements.join('\n'));
+  const [benefitsText, setBenefitsText] = useState(reviewData.Benefits.join('\n'));
+
 const normalizeData = (data) => ({
   JobTitle: data.JobTitle || data.title || '',
   Company: data.Company || data.company || data['Company name'] || '',
@@ -43,18 +50,28 @@ const normalizeData = (data) => ({
   post_text: data.post_text || data.original_text || ''
 });
 
+
   // Load extracted data if available
 useEffect(() => {
+  let normalized;
+  
   // Case 1: coming from extracted data
   if (location.state?.extractedData) {
-    setReviewData(normalizeData(location.state.extractedData));
+    normalized = normalizeData(location.state.extractedData);
   }
   // Case 2: editing existing job
   else if (location.state?.jobData) {
-    setReviewData(normalizeData(location.state.jobData));
+    normalized = normalizeData(location.state.jobData);
+  }
+  
+  // Update reviewData and text fields
+  if (normalized) {
+    setReviewData(normalized);
+    setSkillsText(normalized.Skills.join('\n'));
+    setRequirementsText(normalized.Requirements.join('\n'));
+    setBenefitsText(normalized.Benefits.join('\n'));
   }
 }, [location.state]);
-
 
   const JOB_TYPES = [
     'FULL_TIME',
@@ -91,6 +108,9 @@ const handleArrayChange = (field, value) => {
       original_text: reviewData.post_text,
       visibility: reviewData.visibility || 'PUBLIC'
     };
+payload.skills = skillsText.split('\n').map(v => v.trim()).filter(Boolean);
+payload.requirements = requirementsText.split('\n').map(v => v.trim()).filter(Boolean);
+payload.benefits = benefitsText.split('\n').map(v => v.trim()).filter(Boolean);
 
     let response;
     if (isEditing && jobId) {
@@ -227,34 +247,36 @@ const handleArrayChange = (field, value) => {
         <div className="form-group-full">
           <label className="label-review">Skills (one per line)</label>
           <textarea
-            value={reviewData.Skills.join('\n')}
-            onChange={(e) => handleArrayChange('Skills', e.target.value)}
+            value={skillsText}
+            onChange={(e) => setSkillsText(e.target.value)}
             className="textarea"
             rows="4"
             placeholder="Python&#10;JavaScript&#10;React"
           />
+
         </div>
 
-        <div className="form-group-full">
-          <label className="label-review">Requirements (one per line)</label>
-          <textarea
-            value={reviewData.Requirements ? reviewData.Requirements.join('\n') : ''}
-            onChange={(e) => handleArrayChange('Requirements', e.target.value)}
-            className="textarea"
-            rows="4"
-            placeholder="Bachelor's degree&#10;2+ years experience"
-          />
-        </div>
-                <div className="form-group-full">
-          <label className="label-review">Benefits (one per line)</label>
-          <textarea
-            value={reviewData.Benefits ? reviewData.Benefits.join('\n') : ''}
-            onChange={(e) => handleArrayChange('Benefits', e.target.value)}
-            className="textarea"
-            rows="4"
-            placeholder="Free Lunch&#10;Free washrooms&#10;Health Insurance"
-          />
-        </div>
+<div className="form-group-full">
+  <label className="label-review">Requirements (one per line)</label>
+  <textarea
+    value={requirementsText}
+    onChange={(e) => setRequirementsText(e.target.value)}
+    className="textarea"
+    rows="4"
+    placeholder="Bachelor's Degree&#10;3+ years experience&#10;Good communication skills"
+  />
+</div>
+
+<div className="form-group-full">
+  <label className="label-review">Benefits (one per line)</label>
+  <textarea
+    value={benefitsText}
+    onChange={(e) => setBenefitsText(e.target.value)}
+    className="textarea"
+    rows="4"
+    placeholder="Free Lunch&#10;Free washrooms&#10;Health Insurance"
+  />
+</div>
 
         <div className="form-group-full">
           <label className="label-review">Description</label>

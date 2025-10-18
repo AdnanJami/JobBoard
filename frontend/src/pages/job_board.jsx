@@ -37,8 +37,10 @@ const matchesSearch =
   const isSaved = savedJobs.includes(job.id);
   const isApplied = appliedJobs.includes(job.id);
 
-  if (filterType === 'saved' && !isSaved) return false;
-  if (filterType === 'applied' && !isApplied) return false;
+   if (filterType === "saved" && !isSaved) return false;
+if (filterType === "unsaved" && isSaved) return false;
+if (filterType === "applied" && !isApplied) return false;
+if (filterType === "unapplied" && isApplied) return false;
 
   return matchesSearch;
 });
@@ -54,6 +56,28 @@ const getJobs = async () => {
     setLoading(false);
   }
 };
+  const [sortBy, setSortBy] = useState("recent");
+
+  useEffect(() => {
+    fetchJobs(sortBy);
+  }, [sortBy]); // Refetch whenever sorting changes
+
+  const fetchJobs = async (sortBy = "recent") => {
+    try {
+      const response = await api.get(`/api/v1/jobs/?sort_by=${sortBy}`);
+      setJobs(response.data);
+    } catch (error) {
+      console.error("Error fetching jobs:", error);
+    }
+  };
+
+  const handleCountIncrement = async (jobId) => {
+    try {
+      await api.post(`/api/v1/jobs/${jobId}/increment-view/`);
+    } catch (err) {
+      console.error('Error incrementing view count:', err);
+    }
+  };
   const getAppliedJobs = async () => {
     try {
       const response = await api.get('/api/v1/applied-jobs/');
@@ -168,15 +192,22 @@ const handleSave = async (jobId) => {
             className="filter-search"
           />
 
-          <select
-            value={filterType}
-            onChange={(e) => setFilterType(e.target.value)}
-            className="filter-select"
-          >
-            <option value="all">All Jobs</option>
-            <option value="saved">Saved Jobs</option>
-            <option value="applied">Applied Jobs</option>
+<select
+  value={filterType}
+  onChange={(e) => setFilterType(e.target.value)}
+  className="filter-select"
+>
+  <option value="all">All Jobs</option>
+  <option value="saved">Saved Jobs</option>
+  <option value="unsaved">Unsaved Jobs</option>
+  <option value="applied">Applied Jobs</option>
+  <option value="unapplied">Unapplied Jobs</option>
+</select>
+          <select onChange={(e) => fetchJobs(e.target.value)} className="sort-select" >
+            <option value="recent">Most Recent</option>
+            <option value="most_viewed">Hot</option>
           </select>
+
         </div>
 
       </div>
@@ -185,7 +216,15 @@ const handleSave = async (jobId) => {
       {error && <p className="text-red-500">⚠️ {error}</p>}
 
       {filteredJobs.map((job) => (
-        <div key={job.id} className='job-card' onClick={() => handleShow(job)}>
+        <div
+              key={job.id}
+              className="job-card"
+              onClick={() => {
+                handleShow(job);
+                handleCountIncrement(job.id);
+              }}
+                    >
+
           <div className='job-card-header'>
             <div className='job-titles'>
               <div className="title"

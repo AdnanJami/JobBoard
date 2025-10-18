@@ -10,6 +10,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.db.models import Q            
 from rest_framework import generics, status
 from rest_framework.exceptions import PermissionDenied
+from rest_framework.decorators import action
 
 class UserCreate(generics.CreateAPIView):
     queryset = User.objects.all()
@@ -34,6 +35,7 @@ class JobViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         user_only = self.request.query_params.get('user_only')
+        sort_by = self.request.query_params.get('sort_by')
 
         queryset = Job.objects.filter(is_active=True)
 
@@ -46,11 +48,18 @@ class JobViewSet(viewsets.ModelViewSet):
                 Q(posted_by=user) | Q(id__in=related_job_ids)
             )
 
-        return queryset.filter(
+        else : queryset.filter(
             Q(visibility='PUBLIC') |
             Q(posted_by=user) |
             Q(id__in=related_job_ids)
         )
+            # ✅ Sorting logic
+        if sort_by == 'recent':
+            queryset = queryset.order_by('-created_at')
+        elif sort_by == 'most_viewed':
+            queryset = queryset.order_by('-views')
+            
+        return queryset
 
     def perform_create(self, serializer):
         serializer.save(posted_by=self.request.user)
@@ -64,14 +73,27 @@ class JobViewSet(viewsets.ModelViewSet):
         if instance.posted_by != self.request.user:
             raise PermissionDenied("You cannot delete someone else's job.")
         instance.delete()
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        self.increment_view_count(instance, request.user)
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
+    @action(detail=True, methods=['post'], url_path='increment-view')
+    def increment_view(self, request, pk=None):
+        job = self.get_object()
+        user = request.user
+
+        if user != job.posted_by and not job.viewed_by.filter(id=user.id).exists():
+            job.views += 1
+            job.save(update_fields=['views'])
+            job.viewed_by.add(user)  # mark user as having viewed
+
+        return Response({'views': job.views})
+     
 
 
-def perform_destroy(self, instance):
-    if instance.posted_by != self.request.user:
-        raise PermissionDenied("You cannot delete someone else's job.")
-    instance.delete()
 
-
+            
 
 class JobExtractView(APIView):
     """
@@ -119,6 +141,11 @@ class AppliedJobsView(generics.ListCreateAPIView):
             job = Job.objects.get(id=job_id)
         except Job.DoesNotExist:
             return Response({"error": "Job not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+        if job.posted_by != request.user and not job.viewed_by.filter(id=request.user.id).exists():
+            job.views += 1
+            job.viewed_by.add(request.user)
+            job.save(update_fields=['views'])
 
         # If already applied, return message instead of error
         if AppliedJob.objects.filter(job=job, applicant_name=request.user).exists():
@@ -165,6 +192,11 @@ class SavedJobsView(generics.ListCreateAPIView):
             job = Job.objects.get(id=job_id)
         except Job.DoesNotExist:
             return Response({"error": "Job not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+        if job.posted_by != request.user and not job.viewed_by.filter(id=request.user.id).exists():
+            job.views += 1
+            job.viewed_by.add(request.user)
+            job.save(update_fields=['views'])
 
         # If already applied, return message instead of error
         if SavedJob.objects.filter(job=job, applicant_name=request.user).exists():

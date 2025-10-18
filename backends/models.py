@@ -35,6 +35,7 @@ class Job(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     is_active = models.BooleanField(default=True)
     views = models.IntegerField(default=0)
+    viewed_by = models.ManyToManyField(User, blank=True, related_name='viewed_jobs')
     posted_by = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
