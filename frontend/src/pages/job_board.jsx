@@ -31,7 +31,7 @@ const matchesSearch =
   (job.description && job.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
   (Array.isArray(job.skills) && job.skills.some(
     (skill) => skill.toLowerCase().includes(searchTerm.toLowerCase())
-  ));
+  ))||job.posted_by_username.toLowerCase().includes(searchTerm.toLowerCase());
 
 
   const isSaved = savedJobs.includes(job.id);
@@ -222,9 +222,10 @@ const handleSave = async (jobId) => {
               />
             ))}
           </div>
-          <div className="job-poster" >
-            Posted by: {job.posted_by_username || 'N/A'}
-          </div>
+          <div className="job-poster" 
+          dangerouslySetInnerHTML={{ __html:`Posted by ${highlightText(job.posted_by_username, searchTerm)}` }}
+              />
+            
         </div>
       ))}
 
