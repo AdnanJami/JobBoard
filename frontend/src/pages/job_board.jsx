@@ -49,6 +49,7 @@ const getJobs = async () => {
   setLoading(true);
   try {
     const response = await api.get('/api/v1/jobs/');
+    console.log(response)
     setJobs(response.data);
   } catch (err) {
     setError(err.response?.data?.detail || err.message);
