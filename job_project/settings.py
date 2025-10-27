@@ -14,7 +14,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-mx2f!)gg*&03@a89@b)jk!g!fv3u3ioy48poo3=gjj05r5r+tr'
+SECRET_KEY = os.getenv("SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -85,7 +85,7 @@ WSGI_APPLICATION = 'job_project.wsgi.application'
 
 DATABASES = {
     'default': dj_database_url.config(
-        default='postgresql://bonana_user:MBbibGIhZr1B01IUPSx26TUHUzIM12rL@dpg-d3p6i6m3jp1c739vhe0g-a.oregon-postgres.render.com/bonana',
+        default=os.getenv("default"),
         conn_max_age=600
     )
 }
