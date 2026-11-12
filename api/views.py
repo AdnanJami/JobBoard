@@ -23,7 +23,7 @@ class CurrentUserView(APIView):
     def get(self, request):
         return Response({"username": request.user.username})
     
-
+#added viewset for Job model
 
 from rest_framework.exceptions import PermissionDenied
 from django.db.models import Q
